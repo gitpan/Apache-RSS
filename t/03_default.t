@@ -26,6 +26,30 @@ use Apache::ModuleConfig;
     sub port {80}
     sub server_admin { 'admin@example.com' }
 }
+{
+    package Apache::RSS::TestSubReq;
+    sub new { 
+	my($class, $uri) = @_;
+	my $self = bless {
+	    uri => $uri
+	}, $class;
+	$self;
+    }
+    sub filename { 
+	my $self = shift;
+	my $uri = defined $self->{uri} ? $self->{uri} : '';
+	return "./t/test_dir/". $uri; 
+    }
+    sub content_type{'text/html';}
+    sub args{ return 'index=rss'; }
+    sub allow_options{ 1; }
+    sub log_reason{ }
+    sub hostname{ 'www.example.com' }
+    sub uri { '/' }
+    sub finfo{ filename() }
+    sub server { bless {}, 'Apache::RSS::TestServer'; }
+    sub AUTOLOAD{ 1 }
+}
 my $output;
 {
     package Apache::RSS::TestRequest;
@@ -37,10 +61,12 @@ my $output;
     sub hostname{ 'www.example.com' }
     sub uri { '/' }
     sub server { bless {}, 'Apache::RSS::TestServer'; }
-    sub AUTOLOAD{}
+    sub lookup_uri{shift; Apache::RSS::TestSubReq->new(shift)}
+    sub request_time{ time }
+    sub AUTOLOAD { 1 }
     sub print { shift; $output = shift; } 
 }
 
-is(Apache::RSS::handler(Apache::RSS::TestRequest->new), OK);
+is(Apache::RSS->handler(Apache::RSS::TestRequest->new), OK);
 like($output, qr@<link>http://www.example.com/1.html</link>@);
 like($output, qr@<title>1.html</title>@);

@@ -1,6 +1,8 @@
 package Apache::RSS;
 
 use ExtUtils::MakeMaker;
+use lib './lib';
+use Apache::RSS;
 use Apache::src ();
 use Apache::ExtUtils qw(command_table);
 
@@ -50,9 +52,14 @@ my @directives = (
 	args_how => 'TAKE1',
 	req_override => 'OR_INDEXES',
     },
+    {
+	name => 'RSSOrderBy',
+	args_how => 'TAKE12',
+	req_override => 'OR_INDEXES',
+    }
 );
 
-command_table(\@directives);
+__PACKAGE__->command_table(\@directives);
 
 WriteMakefile(
     'NAME'      => __PACKAGE__,

@@ -29,5 +29,5 @@ my $log;
     sub log_reason{ shift; $log = shift; }
 }
 
-is(Apache::RSS::handler(Apache::RSS::TestRequest->new), FORBIDDEN);
+is(Apache::RSS->handler(Apache::RSS::TestRequest->new), FORBIDDEN);
 like($log, qr/^Options Indexes/);

@@ -56,6 +56,9 @@ static mod_perl_cmd_info cmd_info_RSSHTMLRegexp = {
 static mod_perl_cmd_info cmd_info_RSSEncodeHandler = { 
 "Apache::RSS::RSSEncodeHandler", "", 
 };
+static mod_perl_cmd_info cmd_info_RSSOrderBy = { 
+"Apache::RSS::RSSOrderBy", "", 
+};
 
 
 static command_rec mod_cmds[] = {
@@ -96,6 +99,10 @@ static command_rec mod_cmds[] = {
       (void*)&cmd_info_RSSEncodeHandler,
       OR_INDEXES, TAKE1, "1-3 value(s) for RSSEncodeHandler" },
 
+    { "RSSOrderBy", perl_cmd_perl_TAKE12,
+      (void*)&cmd_info_RSSOrderBy,
+      OR_INDEXES, TAKE12, "1-3 value(s) for RSSOrderBy" },
+
     { NULL }
 };
 
@@ -103,7 +110,7 @@ module MODULE_VAR_EXPORT XS_Apache__RSS = {
     STANDARD_MODULE_STUFF,
     NULL,               /* module initializer */
     create_dir_config_sv,  /* per-directory config creator */
-    NULL,   /* dir config merger */
+    perl_perl_merge_dir_config,   /* dir config merger */
     create_srv_config_sv,       /* server config creator */
     NULL,        /* server config merger */
     mod_cmds,               /* command table */

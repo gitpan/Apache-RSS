@@ -1,5 +1,5 @@
 package Apache::RSS;
-# $Id: RSS.pm,v 1.3 2002/05/10 07:41:56 ikechin Exp $
+# $Id: RSS.pm,v 1.4 2002/05/17 10:49:50 ikechin Exp $
 
 use strict;
 use Apache::Constants qw(:common &OPT_INDEXES &DECLINE_CMD);
@@ -12,7 +12,7 @@ use Apache::ModuleConfig;
 use Apache::Util qw(escape_html);
 use vars qw($VERSION);
 
-$VERSION = '0.03';
+$VERSION = '0.04';
 
 if($ENV{MOD_PERL}) {
     no strict;
@@ -20,9 +20,9 @@ if($ENV{MOD_PERL}) {
     __PACKAGE__->bootstrap($VERSION);
 }
 
-sub handler {
-    my $r = shift;
-    my $cfg = Apache::ModuleConfig->get($r);
+sub handler($$){
+    my($class, $r) = @_;
+    my $cfg = Apache::ModuleConfig->get($r) || {};
     # check permission
     unless (-d $r->filename) {
 	return DECLINED;
@@ -42,14 +42,39 @@ sub handler {
 	$r->log_reason("Can't open directory", $dir);
 	return FORBIDDEN;
     }
-    my $regexp = $cfg->{'RSSEnableRegexp'};
-
-    my @files = 
-	sort { $a cmp $b } 
-	    grep { !/^\./ && -f "$dir/$_" && /$regexp/ } $d->read;
-    $d->close;
-    ## generate RSS
     my $base = base_uri($r);
+    my $regexp = $cfg->{'RSSEnableRegexp'} || qr/.*/;
+    my @items = ();
+    while (my $file = $d->read) {
+	next if $file =~ /^\./;
+	next unless $file =~ m/$regexp/;
+	my $subr = $r->lookup_uri($file);
+	next unless -f $subr->filename;
+	push @items, Apache::RSS::Item->new({
+	    content_type => $subr->content_type,
+	    title => $cfg->{'RSSScanHTMLTitle'} ? (find_title($subr, $cfg) || $file) : $file,
+	    name => $file,
+	    link => URI->new_abs($file, $base),
+	    filename => $subr->filename,
+	    mtime => (stat $subr->finfo)[9]
+	});
+    }
+    $d->close;
+    my $order = $cfg->{'RSSOrderBy'} || "ORDER_BY_FILENAME_ASC";
+    if ($order eq "ORDER_BY_FILENAME_ASC") {
+	@items = sort {$a->filename cmp $b->filename} @items;
+    } 
+    elsif ($order eq "ORDER_BY_FILENAME_DESC") {
+	@items = sort {$b->filename cmp $a->filename} @items;
+    }
+    elsif ($order eq "ORDER_BY_MTIME_ASC") {
+	@items = sort {$a->mtime <=> $b->mtime} @items;
+    }
+    elsif ($order eq "ORDER_BY_MTIME_DESC") {
+	@items = sort {$b->mtime <=> $a->mtime} @items;
+    }
+
+    ## generate RSS
     my $req_time = localtime($r->request_time); # Time::Piece 
     my $channel_title = 
 	$cfg->{'RSSChannelTitle'} || sprintf("Index Of %s", $r->uri);
@@ -57,8 +82,8 @@ sub handler {
 	$cfg->{'RSSChannelDescription'} || sprintf("Index Of %s", $r->uri);
     my $copyright =
 	$cfg->{'RSSCopyRight'} || sprintf("Copyright %d %s", $req_time->year, $r->hostname);
-    my $language = $cfg->{'RSSLanguage'};
-    my $encoding = $cfg->{'RSSEncoding'};
+    my $language = $cfg->{'RSSLanguage'} || "en-us";
+    my $encoding = $cfg->{'RSSEncoding'} || "UTF-8";
 
     my $rss = XML::RSS->new(version => '0.91', encoding => $encoding);
     $rss->channel(
@@ -71,10 +96,10 @@ sub handler {
 	copyright => escape_html($copyright),
 	language => $language,
     );
-    foreach my $file(@files) {
+    foreach my $item(@items) {
 	$rss->add_item(
-	    link => URI->new_abs($file, $base),
-	    title => $cfg->{'RSSScanHTMLTitle'} ? find_title($r, $cfg, $file) : $file,
+	    link => $item->link,
+	    title => $item->title,
 	);
     }
     # send content
@@ -93,17 +118,14 @@ sub base_uri {
 }
 
 sub find_title {
-    my($r, $cfg, $file) = @_;
+    my($subr, $cfg) = @_;
     my $encoder = $cfg->{'RSSEncodeHandler'};
-#    my $html_re = $cfg->{'RSSHTMLRegexp'};
-    my $subreq = $r->lookup_uri($file);
-    $r->log_error($subreq->content_type. ' '. $subreq->filename);
-    if ($subreq->content_type =~ m#^text/html#) {
+    if ($subr->content_type =~ m#^text/html#) {
 	local $/ = undef;
-	my $f = IO::File->new($subreq->filename, "r") or return $file;
+	my $f = IO::File->new($subr->filename, "r") or return undef;
 	my $html = <$f>;
 	$html =~ m#<title>([^>]+)</title>#i;
-	return $file unless $1;
+	return undef unless $1;
 	if ($encoder) {
 	    my $enc = $encoder->new;
 	    return $enc->encode($1);
@@ -112,7 +134,7 @@ sub find_title {
 	    return $1;
 	}
     }
-    return $file;
+    return undef;
 }
 
 ##----------------------------------------------------------------
@@ -124,17 +146,17 @@ sub RSSEnableRegexp($$$){
     die $@ if $@;
 }
 
-sub RSSChannelTitle {
+sub RSSChannelTitle($$$) {
     my($cfg, $params, $arg) = @_;
     $cfg->{RSSChannelTitle} = $arg;
 }
 
-sub RSSChannelDescription {
+sub RSSChannelDescription($$$) {
     my($cfg, $params, $arg) = @_;
     $cfg->{RSSChannelDescription} = $arg;
 }
 
-sub RSSCopyRight {
+sub RSSCopyRight($$$) {
     my($cfg, $params, $arg) = @_;
     $cfg->{RSSCopyRight} = $arg;
 }
@@ -159,7 +181,7 @@ sub RSSEncoding($$$){
     $cfg->{RSSEncoding} = $arg;
 }
 
-sub RSSEncodeHandler {
+sub RSSEncodeHandler($$$) {
     my($cfg, $params, $arg) = @_;
     $arg =~ m/([a-zA-Z0-9:]+)/; # untaint
     my $class = $1;
@@ -170,19 +192,93 @@ sub RSSEncodeHandler {
     $cfg->{RSSEncodeHandler} = $arg;
 }
 
+sub RSSOrderBy($$$;$) {
+    my($cfg, $params, $type, $order) = @_;
+    if (lc($type) eq "mtime") {
+	if (uc($order) eq "DESC") {
+	    $cfg->{RSSOrderBy} = "ORDER_BY_MTIME_DESC";
+	}
+	else {
+	    $cfg->{RSSOrderBy} = "ORDER_BY_MTIME_ASC";
+	}
+    }
+    elsif (lc($type) eq "filename") {
+	if (uc($order) eq "DESC") {
+	    $cfg->{RSSOrderBy} = "ORDER_BY_FILENAME_DESC";
+	}
+	else {
+	    $cfg->{RSSOrderBy} = "ORDER_BY_FILENAME_ASC";
+	}
+    }
+    else {
+	die "arguments Error - RSSOrderBy <mtime|filename> [DESC|ASC]";
+    }
+}
+
 sub DIR_CREATE {
     my $class = shift;
     my $self = bless {}, $class;
-    $self->{RSSChannelTitle} ||= undef;
-    $self->{RSSChannelDescription} ||= undef;
-    $self->{RSSCopyRight} ||= undef;
-    $self->{RSSEnableRegexp} ||= '.*';
-    $self->{RSSHTMLRegexp} ||= undef;
-    $self->{RSSLanguage} ||= 'en-us';
-    $self->{RSSEncoding} ||= 'UTF-8';
-    $self->{RSSScanHTMLTitle} ||= 0;
-    $self->{RSSEncodeHandler} ||= undef;
     $self;
+}
+
+sub DIR_MERGE {
+    my($parent, $current) = @_;
+    my %new = (%$parent, %$current);
+    return bless \%new, ref($parent);
+}
+
+## ---------------------------------------------------------------- 
+## Apache::RSS::Item
+## ---------------------------------------------------------------- 
+package Apache::RSS::Item;
+use strict;
+
+sub new {
+    my($class, $args) = @_;
+    my $self = bless {
+    }, $class;
+    $self->{filename} = $args->{filename};
+    $self->{content_type} = $args->{content_type};
+    $self->{link} = $args->{link};
+    $self->{title} = $args->{title};
+    $self->{mtime} = $args->{mtime};
+    $self;
+}
+
+sub mtime {
+    my($self, $arg) = @_;
+    $self->{mtime} = $arg if defined $arg;
+    return $self->{mtime};
+}
+
+sub filename {
+    my($self, $arg) = @_;
+    $self->{filename} = $arg if defined $arg;
+    return $self->{filename};
+}
+
+sub name {
+    my($self, $arg) = @_;
+    $self->{name} = $arg if defined $arg;
+    return $self->{name};
+}
+
+sub link {
+    my($self, $arg) = @_;
+    $self->{link} = $arg if defined $arg;
+    return $self->{link};
+}
+
+sub title {
+    my($self, $arg) = @_;
+    $self->{title} = $arg if defined $arg;
+    return $self->{title}
+}
+
+sub content_type {
+    my($self, $arg) = @_;
+    $self->{content_type} = $arg if defined $arg;
+    return $self->{content_type}
 }
 
 1;
@@ -202,7 +298,6 @@ setup your httpd.conf
  Options +Indexes
  PerlHandler Apache::RSS
  RSSEnableRegexp \.html$
- RSSHTMLRegexp \.html$
  RSSScanHTMLTitle On
  RSSEncoding UTF-8
  RSSEncodeHandler Apache::RSS::Encoding::JcodeUTF8
@@ -256,6 +351,11 @@ scan HTML files and set HTML <title> as RSS <title> or not. default Off
 works with RSSScanHTMLTitle and encode HTML title string.
 
 eg. L<Apache::RSS::Encoding::JcodeUTF8>
+
+=item RSSOrderBy <mtime|filename> [DESC|ASC]
+
+setup RSS items order.
+default RSSOrderBy filename ASC
 
 =item RSSHTMLRegexp <regexp>
 

@@ -19,6 +19,7 @@ use Apache::ModuleConfig;
     sub get{
 	my $conf = Apache::RSS->DIR_CREATE;
 	$conf->{RSSScanHTMLTitle} = 1;
+	$conf->{RSSOrderBy} = 'ORDER_BY_FILENAME_DESC';
 	return $conf;
     }
 }
@@ -73,5 +74,8 @@ my $output;
 
 is(Apache::RSS->handler(Apache::RSS::TestRequest->new), OK);
 like($output, qr@<link>http://www.example.com/1.html</link>@);
-like($output, qr@<title>Hello World</title>@);
-like($output, qr@<title>foo\.txt</title>@);
+# order foo.txt => 2.html
+like($output, qr@<title>foo\.txt</title>.*<title>Hello World2@s);
+# order 2.html => 1.html
+like($output, qr@<title>Hello World2</title>.*<title>Hello World</title>@s);
+

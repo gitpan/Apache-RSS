@@ -1,3 +1,8 @@
+2002-05-17  IKEBE Tomohiro  <ikebe@edge.co.jp>
+
+	* DIR_MERGE works correctly.
+	* added RSSOrderBy directive.
+
 2002-05-10  IKEBE Tomohiro  <ikebe@edge.co.jp>
 
 	* RSSHTMLRegexp is obsolete. use subreq to determine text/html.

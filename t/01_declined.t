@@ -27,4 +27,4 @@ use Apache::ModuleConfig;
     sub filename { return ''; }
 }
 
-is(Apache::RSS::handler(Apache::RSS::TestRequest->new), DECLINED);
+is(Apache::RSS->handler(Apache::RSS::TestRequest->new), DECLINED);
