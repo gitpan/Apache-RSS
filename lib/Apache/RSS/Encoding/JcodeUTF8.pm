@@ -1,5 +1,5 @@
 package Apache::RSS::Encoding::JcodeUTF8;
-# $Id$
+# $Id: JcodeUTF8.pm,v 1.1 2002/05/09 14:09:30 ikechin Exp $
 #
 # IKEBE Tomohiro <ikebe@edge.co.jp>
 # Livin' On The EDGE, Limited.

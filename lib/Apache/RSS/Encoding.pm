@@ -1,5 +1,5 @@
 package Apache::RSS::Encoding;
-# $Id$
+# $Id: Encoding.pm,v 1.1 2002/05/09 14:09:30 ikechin Exp $
 #
 # IKEBE Tomohiro <ikebe@edge.co.jp>
 # Livin' On The EDGE, Limited.

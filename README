@@ -6,13 +6,13 @@ SYNOPSIS
 
      PerlModule Apache::RSS
      <Diretory /path/to/htdocs>
-     Options +Indexex
+     Options +Indexes
      PerlHandler Apache::RSS
-     PerlSetVar RSSEnableRegexp \.html$
-     PerlSetVar RSSHTMLRegexp \.html$
-     PerlSetVar RSSScanHTMLTitle On
-     PerlSetVar RSSEncoding UTF-8
-     PerlSetVar RSSEncodeHandler Apache::RSS::Encoding::JcodeUTF8
+     RSSEnableRegexp \.html$
+     RSSHTMLRegexp \.html$
+     RSSScanHTMLTitle On
+     RSSEncoding UTF-8
+     RSSEncodeHandler Apache::RSS::Encoding::JcodeUTF8
      </Directory>
 
     and access with QUERY_STRING *index=rss*

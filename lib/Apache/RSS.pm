@@ -10,7 +10,7 @@ use DynaLoader ();
 use Apache::ModuleConfig;
 use vars qw($VERSION);
 
-$VERSION = '0.01';
+$VERSION = '0.02';
 
 if($ENV{MOD_PERL}) {
     no strict;
@@ -193,13 +193,13 @@ setup your httpd.conf
 
  PerlModule Apache::RSS
  <Diretory /path/to/htdocs>
- Options +Indexex
+ Options +Indexes
  PerlHandler Apache::RSS
- PerlSetVar RSSEnableRegexp \.html$
- PerlSetVar RSSHTMLRegexp \.html$
- PerlSetVar RSSScanHTMLTitle On
- PerlSetVar RSSEncoding UTF-8
- PerlSetVar RSSEncodeHandler Apache::RSS::Encoding::JcodeUTF8
+ RSSEnableRegexp \.html$
+ RSSHTMLRegexp \.html$
+ RSSScanHTMLTitle On
+ RSSEncoding UTF-8
+ RSSEncodeHandler Apache::RSS::Encoding::JcodeUTF8
  </Directory>
 
 and access with QUERY_STRING I<index=rss>
