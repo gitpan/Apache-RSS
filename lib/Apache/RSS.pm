@@ -1,5 +1,5 @@
 package Apache::RSS;
-# $Id: RSS.pm,v 1.4 2002/05/17 10:49:50 ikechin Exp $
+# $Id: RSS.pm,v 1.6 2002/05/30 14:08:03 ikechin Exp $
 
 use strict;
 use Apache::Constants qw(:common &OPT_INDEXES &DECLINE_CMD);
@@ -12,7 +12,7 @@ use Apache::ModuleConfig;
 use Apache::Util qw(escape_html);
 use vars qw($VERSION);
 
-$VERSION = '0.04';
+$VERSION = '0.05';
 
 if($ENV{MOD_PERL}) {
     no strict;
@@ -27,7 +27,8 @@ sub handler($$){
     unless (-d $r->filename) {
 	return DECLINED;
     }
-    unless ($r->args eq 'index=rss') {
+    my %args = $r->args;
+    unless ($args{index} && $args{index} eq 'rss') {
 	return DECLINED;
     }
     if (!($r->allow_options & OPT_INDEXES)) {
@@ -35,19 +36,42 @@ sub handler($$){
 	return FORBIDDEN;
     }
 
-    # open directory
+    my $base   = base_uri($r);
+    my @items  = open_dir($r, $cfg, $base);
+    my $sorter = build_sorter(\%args);
+    @items = sort { $sorter->($a, $b) } @items;
+
+    my $rss = create_rss($r, $cfg, \@items, $base);
+    # send content
+    $r->send_http_header('text/xml');
+    $r->print($rss->as_string);
+    return OK;
+}
+
+sub base_uri {
+    my $r = shift;
+    my $base = URI->new($r->uri, "http");
+    $base->host($r->hostname);
+    $base->port($r->server->port) if $r->server->port != 80;
+    $base->scheme('http');
+    return $base;
+}
+
+sub open_dir {
+    my($r, $cfg, $base) = @_;
+
     my $dir = $r->filename;
     my $d = DirHandle->new($dir);
     unless ($d) {
 	$r->log_reason("Can't open directory", $dir);
 	return FORBIDDEN;
     }
-    my $base = base_uri($r);
-    my $regexp = $cfg->{'RSSEnableRegexp'} || qr/.*/;
+
+    my $regexp = $cfg->{'RSSEnableRegexp'};
     my @items = ();
     while (my $file = $d->read) {
 	next if $file =~ /^\./;
-	next unless $file =~ m/$regexp/;
+	next if $regexp && $file !~ m/$regexp/;
 	my $subr = $r->lookup_uri($file);
 	next unless -f $subr->filename;
 	push @items, Apache::RSS::Item->new({
@@ -60,22 +84,12 @@ sub handler($$){
 	});
     }
     $d->close;
-    my $order = $cfg->{'RSSOrderBy'} || "ORDER_BY_FILENAME_ASC";
-    if ($order eq "ORDER_BY_FILENAME_ASC") {
-	@items = sort {$a->filename cmp $b->filename} @items;
-    } 
-    elsif ($order eq "ORDER_BY_FILENAME_DESC") {
-	@items = sort {$b->filename cmp $a->filename} @items;
-    }
-    elsif ($order eq "ORDER_BY_MTIME_ASC") {
-	@items = sort {$a->mtime <=> $b->mtime} @items;
-    }
-    elsif ($order eq "ORDER_BY_MTIME_DESC") {
-	@items = sort {$b->mtime <=> $a->mtime} @items;
-    }
+    return @items;
+}
 
-    ## generate RSS
-    my $req_time = localtime($r->request_time); # Time::Piece 
+sub create_rss {
+    my($r, $cfg, $items, $base) = @_;
+    my $req_time = Time::Piece->new($r->request_time);
     my $channel_title = 
 	$cfg->{'RSSChannelTitle'} || sprintf("Index Of %s", $r->uri);
     my $channel_description = 
@@ -96,25 +110,13 @@ sub handler($$){
 	copyright => escape_html($copyright),
 	language => $language,
     );
-    foreach my $item(@items) {
+    foreach my $item (@$items) {
 	$rss->add_item(
 	    link => $item->link,
-	    title => $item->title,
+	    title => escape_html($item->title),
 	);
     }
-    # send content
-    $r->send_http_header('text/xml');
-    $r->print($rss->as_string);
-    return OK;
-}
-
-sub base_uri {
-    my $r = shift;
-    my $base = URI->new($r->uri, "http");
-    $base->host($r->hostname);
-    $base->port($r->server->port) if $r->server->port != 80;
-    $base->scheme('http');
-    return $base;
+    return $rss;
 }
 
 sub find_title {
@@ -135,6 +137,24 @@ sub find_title {
 	}
     }
     return undef;
+}
+
+my %SortBy = (
+    'N' => 'title' ,
+    'M' => 'mtime',
+);
+
+sub build_sorter {
+    my $args = shift;
+
+    # N=A by default
+    my $sortby = (grep exists $args->{$_}, keys %SortBy)[0] || 'N';
+    my $order  = $args->{$sortby} || 'A';
+    my @target = $order eq 'A' ? qw($_[0] $_[1]) : qw($_[1] $_[0]);
+    my $cmp    = $sortby eq 'N' ? 'cmp' : '<=>';
+
+    return eval sprintf "sub { %s->%s %s %s->%s }",
+	$target[0], $SortBy{$sortby}, $cmp, $target[1], $SortBy{$sortby};
 }
 
 ##----------------------------------------------------------------
@@ -161,11 +181,6 @@ sub RSSCopyRight($$$) {
     $cfg->{RSSCopyRight} = $arg;
 }
 
-sub RSSHTMLRegexp($$$){
-     my($cfg, $params, $arg) = @_;
-     warn "RSSHTMLRegexp is obsolete." if $arg;
-}
-
 sub RSSScanHTMLTitle($$$){
     my($cfg, $params, $arg) = @_;
     $cfg->{RSSScanHTMLTitle} = $arg;
@@ -190,29 +205,6 @@ sub RSSEncodeHandler($$$) {
 	die $@;
     }
     $cfg->{RSSEncodeHandler} = $arg;
-}
-
-sub RSSOrderBy($$$;$) {
-    my($cfg, $params, $type, $order) = @_;
-    if (lc($type) eq "mtime") {
-	if (uc($order) eq "DESC") {
-	    $cfg->{RSSOrderBy} = "ORDER_BY_MTIME_DESC";
-	}
-	else {
-	    $cfg->{RSSOrderBy} = "ORDER_BY_MTIME_ASC";
-	}
-    }
-    elsif (lc($type) eq "filename") {
-	if (uc($order) eq "DESC") {
-	    $cfg->{RSSOrderBy} = "ORDER_BY_FILENAME_DESC";
-	}
-	else {
-	    $cfg->{RSSOrderBy} = "ORDER_BY_FILENAME_ASC";
-	}
-    }
-    else {
-	die "arguments Error - RSSOrderBy <mtime|filename> [DESC|ASC]";
-    }
 }
 
 sub DIR_CREATE {
@@ -245,40 +237,19 @@ sub new {
     $self;
 }
 
-sub mtime {
-    my($self, $arg) = @_;
-    $self->{mtime} = $arg if defined $arg;
-    return $self->{mtime};
-}
-
-sub filename {
-    my($self, $arg) = @_;
-    $self->{filename} = $arg if defined $arg;
-    return $self->{filename};
-}
-
-sub name {
-    my($self, $arg) = @_;
-    $self->{name} = $arg if defined $arg;
-    return $self->{name};
-}
-
-sub link {
-    my($self, $arg) = @_;
-    $self->{link} = $arg if defined $arg;
-    return $self->{link};
-}
-
-sub title {
-    my($self, $arg) = @_;
-    $self->{title} = $arg if defined $arg;
-    return $self->{title}
-}
-
-sub content_type {
-    my($self, $arg) = @_;
-    $self->{content_type} = $arg if defined $arg;
-    return $self->{content_type}
+{
+    my $loaded;
+    unless ($loaded) {
+	for my $attr (qw(mtime filename name link title content_type)) {
+	    no strict 'refs';
+	    *$attr = sub {
+		my $self = shift;
+		$self->{$attr} = shift if @_;
+		return $self->{$attr};
+	    };
+	}
+	$loaded++;
+    }
 }
 
 1;
@@ -305,7 +276,7 @@ setup your httpd.conf
 
 and access with QUERY_STRING I<index=rss>
 
-http://yourhost/?index=rss
+  http://yourhost/?index=rss
 
 =head1 DESCRIPTION
 
@@ -348,31 +319,33 @@ scan HTML files and set HTML <title> as RSS <title> or not. default Off
 
 =item RSSEncodeHandler <EncodeHandlerClass>
 
-works with RSSScanHTMLTitle and encode HTML title string.
-
-eg. L<Apache::RSS::Encoding::JcodeUTF8>
-
-=item RSSOrderBy <mtime|filename> [DESC|ASC]
-
-setup RSS items order.
-default RSSOrderBy filename ASC
-
-=item RSSHTMLRegexp <regexp>
-
-this directive is obsolete. ignored with warn.
+works with RSSScanHTMLTitle and encode HTML title string. see
+L<Apache::RSS::Encoding::JcodeUTF8> for details.
 
 =back
 
-=head1 AUTHOR
+=head1 OPTIONS
+
+This module supports query string option to configure the order of
+items in generated RSS file. Options are subset of those for
+mod_auto_index. For example, accessed with
+
+  http://hostname/?index=rss&M=D
+
+generated RSS will put items order by mtime desc. default is C<N=A>.
+
+=head1 AUTHORS
 
 IKEBE Tomohiro E<lt>ikebe@edge.co.jpE<gt>
+
+Tatsuhiko Miyagawa E<lt>miyagawa@bulknews.netE<gt>
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
 
 =head1 SEE ALSO
 
-L<XML::RSS> L<mod_perl>
+L<XML::RSS>, L<mod_perl>
 
 http://software.tangent.org/projects.pl?view=mod_index_rss
 

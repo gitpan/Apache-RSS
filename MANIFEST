@@ -2,7 +2,6 @@ Changes
 MANIFEST
 Makefile.PL
 README
-RSS.xs
 lib/Apache/RSS.pm
 lib/Apache/RSS/Encoding.pm
 lib/Apache/RSS/Encoding/JcodeUTF8.pm

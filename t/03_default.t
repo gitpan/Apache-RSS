@@ -41,7 +41,7 @@ use Apache::ModuleConfig;
 	return "./t/test_dir/". $uri; 
     }
     sub content_type{'text/html';}
-    sub args{ return 'index=rss'; }
+    sub args{ return index => 'rss'; }
     sub allow_options{ 1; }
     sub log_reason{ }
     sub hostname{ 'www.example.com' }
@@ -55,7 +55,7 @@ my $output;
     package Apache::RSS::TestRequest;
     sub new { bless {}, shift; }
     sub filename { return './t/test_dir/'; }
-    sub args{ return 'index=rss'; }
+    sub args{ return index => 'rss'; }
     sub allow_options{ 1; }
     sub log_reason{ }
     sub hostname{ 'www.example.com' }

@@ -19,7 +19,6 @@ use Apache::ModuleConfig;
     sub get{
 	my $conf = Apache::RSS->DIR_CREATE;
 	$conf->{RSSScanHTMLTitle} = 1;
-	$conf->{RSSOrderBy} = 'ORDER_BY_FILENAME_DESC';
 	return $conf;
     }
 }
@@ -41,12 +40,12 @@ use Apache::ModuleConfig;
 	$self;
     }
     sub filename {
-	my $self = shift;	
+	my $self = shift;
 	my $uri = defined $self->{uri} ? $self->{uri} : '';
 	return "./t/test_dir/". $uri; 
     }
     sub content_type{'text/html';}
-    sub args{ return 'index=rss'; }
+    sub args{ return index => 'rss', N => 'D'; }
     sub allow_options{ 1; }
     sub log_reason{ }
     sub hostname{ 'www.example.com' }
@@ -61,7 +60,7 @@ my $output;
     package Apache::RSS::TestRequest;
     sub new { bless {}, shift; }
     sub filename { return './t/test_dir/'; }
-    sub args{ return 'index=rss'; }
+    sub args{ return index => 'rss', N => 'D'; }
     sub allow_options{ 1; }
     sub log_reason{ }
     sub hostname{ 'www.example.com' }

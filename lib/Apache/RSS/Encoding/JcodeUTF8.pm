@@ -1,9 +1,9 @@
 package Apache::RSS::Encoding::JcodeUTF8;
-# $Id: JcodeUTF8.pm,v 1.2 2002/05/10 07:41:56 ikechin Exp $
+# $Id: JcodeUTF8.pm,v 1.3 2002/05/30 14:05:15 ikechin Exp $
 #
 # IKEBE Tomohiro <ikebe@edge.co.jp>
 # Livin' On The EDGE, Limited.
-# Time-stamp: <2002-05-10 11:17:17 ikebe>
+# Time-stamp: <2002-05-30 22:20:38 miyagawa>
 
 use strict;
 use Jcode;
@@ -24,8 +24,8 @@ Apache::RSS::Encoding::JcodeUTF8 - encode Japanese <title>..</title> string to u
 
 =head1 SYNOPSIS
 
- RSSScanHTMLTitle On
- RSSEncodeHandler Apache::RSS::Encoding::JcodeUTF8
+  RSSScanHTMLTitle On
+  RSSEncodeHandler Apache::RSS::Encoding::JcodeUTF8
 
 =head1 DESCRIPTION
 

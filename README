@@ -9,7 +9,6 @@ SYNOPSIS
      Options +Indexes
      PerlHandler Apache::RSS
      RSSEnableRegexp \.html$
-     RSSHTMLRegexp \.html$
      RSSScanHTMLTitle On
      RSSEncoding UTF-8
      RSSEncodeHandler Apache::RSS::Encoding::JcodeUTF8
@@ -17,7 +16,7 @@ SYNOPSIS
 
     and access with QUERY_STRING *index=rss*
 
-    http://yourhost/?index=rss
+      http://yourhost/?index=rss
 
 DESCRIPTION
     Apache::RSS generate RSS output of directory Index. Just like a
@@ -49,21 +48,28 @@ DIRECTIVES
         Off
 
     RSSEncodeHandler <EncodeHandlerClass>
-        works with RSSScanHTMLTitle and encode HTML title string.
+        works with RSSScanHTMLTitle and encode HTML title string. see the
+        Apache::RSS::Encoding::JcodeUTF8 manpage for details.
 
-        eg. the Apache::RSS::Encoding::JcodeUTF8 manpage
+OPTIONS
+    This module supports query string option to configure the order of items
+    in generated RSS file. Options are subset of those for mod_auto_index.
+    For example, accessed with
 
-    RSSHTMLRegexp <regexp>
-        this directive is obsolete. ignored with warn.
+      http://hostname/?index=rss&M=D
 
-AUTHOR
+    generated RSS will put items order by mtime desc. default is `N=A'.
+
+AUTHORS
     IKEBE Tomohiro <ikebe@edge.co.jp>
+
+    Tatsuhiko Miyagawa <miyagawa@bulknews.net>
 
     This library is free software; you can redistribute it and/or modify it
     under the same terms as Perl itself.
 
 SEE ALSO
-    the XML::RSS manpage the mod_perl manpage
+    the XML::RSS manpage, the mod_perl manpage
 
     http://software.tangent.org/projects.pl?view=mod_index_rss
 

@@ -1,12 +1,12 @@
 package Apache::RSS::Encoding;
-# $Id: Encoding.pm,v 1.2 2002/05/10 07:41:56 ikechin Exp $
+# $Id: Encoding.pm,v 1.3 2002/05/30 14:05:15 ikechin Exp $
 #
 # IKEBE Tomohiro <ikebe@edge.co.jp>
 # Livin' On The EDGE, Limited.
-# Time-stamp: <2002-05-10 11:17:07 ikebe>
+# Time-stamp: <2002-05-30 22:25:45 miyagawa>
 
 use strict;
-use Carp;
+require Carp;
 
 sub new {
     my $class = shift;
@@ -15,7 +15,7 @@ sub new {
 }
 
 sub encode {
-    croak "ABSTRACT METHOD!!";
+    Carp::croak("ABSTRACT METHOD!!");
 }
 
 1;
@@ -28,8 +28,8 @@ Apache::RSS::Encoding - ABSTRACT CLASS.
 
 =head1 SYNOPSIS
 
- RSSScanHTMLTitle On
- RSSEncodeHandler Apache::RSS::Encoding::JcodeUTF8
+  RSSScanHTMLTitle On
+  RSSEncodeHandler Apache::RSS::Encoding::JcodeUTF8
 
 =head1 DESCRIPTION
 

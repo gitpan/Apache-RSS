@@ -24,7 +24,7 @@ my $log;
     package Apache::RSS::TestRequest;
     sub new { bless {}, shift; }
     sub filename { return './t/test_dir/'; }
-    sub args{ return 'index=rss'; }
+    sub args{ return index => 'rss'; }
     sub allow_options{ 0 }
     sub log_reason{ shift; $log = shift; }
 }
