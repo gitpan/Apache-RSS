@@ -1,0 +1,69 @@
+NAME
+    Apache::RSS - generate RSS output for directory Index.
+
+SYNOPSIS
+    setup your httpd.conf
+
+     PerlModule Apache::RSS
+     <Diretory /path/to/htdocs>
+     Options +Indexex
+     PerlHandler Apache::RSS
+     PerlSetVar RSSEnableRegexp \.html$
+     PerlSetVar RSSHTMLRegexp \.html$
+     PerlSetVar RSSScanHTMLTitle On
+     PerlSetVar RSSEncoding UTF-8
+     PerlSetVar RSSEncodeHandler Apache::RSS::Encoding::JcodeUTF8
+     </Directory>
+
+    and access with QUERY_STRING *index=rss*
+
+    http://yourhost/?index=rss
+
+DESCRIPTION
+    Apache::RSS generate RSS output of directory Index. Just like a
+    mod_index_rss.
+
+    http://software.tangent.org/projects.pl?view=mod_index_rss
+
+DIRECTIVES
+    RSSEnableRegexp <regexp>
+        A regular expression of files which added in RSS. default .*
+
+    RSSChannelTitle <title>
+        set channel Title. default "Index Of *uri*"
+
+    RSSChannelDescription <description>
+        set channel description. default "Index Of *uri*"
+
+    RSSCopyRight <copyright>
+        set CopyRight string. default "CopyRight *current_year* *hostname*"
+
+    RSSLanguage <language>
+        set RSS language. default en-us
+
+    RSSEncoding <encoding>
+        set RSS encoding. default UTF-8
+
+    RSSScanHTMLTitle <On|Off>
+        scan HTML files and set HTML <title> as RSS <title> or not. default
+        Off
+
+    RSSHTMLRegexp <regexp>
+        A regular exporession of HTML files. default \.html?$
+
+    RSSEncodeHandler <EncodeHandlerClass>
+        work with RSSFindTitle and encode HTML title string.
+
+        eg. the Apache::RSS::Encoding::JcodeUTF8 manpage
+
+AUTHOR
+    IKEBE Tomohiro <ikebe@edge.co.jp>
+
+    This library is free software; you can redistribute it and/or modify it
+    under the same terms as Perl itself.
+
+SEE ALSO
+    the XML::RSS manpage the mod_perl manpage
+
+    http://software.tangent.org/projects.pl?view=mod_index_rss
+
