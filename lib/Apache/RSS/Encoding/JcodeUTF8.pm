@@ -1,9 +1,9 @@
 package Apache::RSS::Encoding::JcodeUTF8;
-# $Id: JcodeUTF8.pm,v 1.1 2002/05/09 14:09:30 ikechin Exp $
+# $Id: JcodeUTF8.pm,v 1.2 2002/05/10 07:41:56 ikechin Exp $
 #
 # IKEBE Tomohiro <ikebe@edge.co.jp>
 # Livin' On The EDGE, Limited.
-# Time-stamp: <2002-05-09 21:59:50 ikebe>
+# Time-stamp: <2002-05-10 11:17:17 ikebe>
 
 use strict;
 use Jcode;
@@ -24,8 +24,8 @@ Apache::RSS::Encoding::JcodeUTF8 - encode Japanese <title>..</title> string to u
 
 =head1 SYNOPSIS
 
- PerlSetVar RSSFindTitle On
- PerlSetVar RSSEncodeHandler Apache::RSS::Encoding::JcodeUTF8
+ RSSScanHTMLTitle On
+ RSSEncodeHandler Apache::RSS::Encoding::JcodeUTF8
 
 =head1 DESCRIPTION
 
@@ -34,7 +34,7 @@ encode Japanese charset to UTF-8. using L<Jcode>.
 
 =head1 AUTHOR
 
-Author E<lt>ikebe@edge.co.jpE<gt>
+IKEBE Tomohiro E<lt>ikebe@edge.co.jpE<gt>
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.

@@ -48,13 +48,13 @@ DIRECTIVES
         scan HTML files and set HTML <title> as RSS <title> or not. default
         Off
 
-    RSSHTMLRegexp <regexp>
-        A regular exporession of HTML files. default \.html?$
-
     RSSEncodeHandler <EncodeHandlerClass>
-        work with RSSFindTitle and encode HTML title string.
+        works with RSSScanHTMLTitle and encode HTML title string.
 
         eg. the Apache::RSS::Encoding::JcodeUTF8 manpage
+
+    RSSHTMLRegexp <regexp>
+        this directive is obsolete. ignored with warn.
 
 AUTHOR
     IKEBE Tomohiro <ikebe@edge.co.jp>

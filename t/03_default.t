@@ -6,11 +6,11 @@ use Apache::Constants qw(:common);
 use Apache::ModuleConfig;
 
 {
-    no strict 'refs';
     *Apache::Constants::DECLINED = sub {-1};
     *Apache::Constants::FORBIDDEN = sub {403};
     *Apache::Constants::OK = sub {0};
     *Apache::Constants::OPT_INDEXES = sub {1};
+    *Apache::Util::escape_html = sub{shift};
 }
 
 

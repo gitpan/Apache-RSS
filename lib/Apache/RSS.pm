@@ -1,16 +1,18 @@
 package Apache::RSS;
+# $Id: RSS.pm,v 1.3 2002/05/10 07:41:56 ikechin Exp $
 
 use strict;
-use Apache::Constants qw(:common &OPT_INDEXES);
+use Apache::Constants qw(:common &OPT_INDEXES &DECLINE_CMD);
 use Time::Piece;
 use XML::RSS;
 use DirHandle;
 use URI;
 use DynaLoader ();
 use Apache::ModuleConfig;
+use Apache::Util qw(escape_html);
 use vars qw($VERSION);
 
-$VERSION = '0.02';
+$VERSION = '0.03';
 
 if($ENV{MOD_PERL}) {
     no strict;
@@ -41,11 +43,11 @@ sub handler {
 	return FORBIDDEN;
     }
     my $regexp = $cfg->{'RSSEnableRegexp'};
+
     my @files = 
 	sort { $a cmp $b } 
 	    grep { !/^\./ && -f "$dir/$_" && /$regexp/ } $d->read;
     $d->close;
-
     ## generate RSS
     my $base = base_uri($r);
     my $req_time = localtime($r->request_time); # Time::Piece 
@@ -60,19 +62,19 @@ sub handler {
 
     my $rss = XML::RSS->new(version => '0.91', encoding => $encoding);
     $rss->channel(
-	title => $channel_title,
+	title => escape_html($channel_title),
 	link => $base,
-	description => $channel_description,
+	description => escape_html($channel_description),
 	webMaster => $r->server->server_admin,
 	pubDate => $req_time->datetime,
 	lastBuildDate => $req_time->datetime,
-	copyright => $copyright,
+	copyright => escape_html($copyright),
 	language => $language,
     );
     foreach my $file(@files) {
 	$rss->add_item(
 	    link => URI->new_abs($file, $base),
-	    title => $cfg->{'RSSScanHTMLTitle'} ? (find_title($cfg, "$dir/$file") || $file) : $file,
+	    title => $cfg->{'RSSScanHTMLTitle'} ? find_title($r, $cfg, $file) : $file,
 	);
     }
     # send content
@@ -91,14 +93,17 @@ sub base_uri {
 }
 
 sub find_title {
-    my($cfg, $file) = @_;
+    my($r, $cfg, $file) = @_;
     my $encoder = $cfg->{'RSSEncodeHandler'};
-    my $html_re = $cfg->{'RSSHTMLRegexp'};
-    if ($file =~ m/$html_re/) {
+#    my $html_re = $cfg->{'RSSHTMLRegexp'};
+    my $subreq = $r->lookup_uri($file);
+    $r->log_error($subreq->content_type. ' '. $subreq->filename);
+    if ($subreq->content_type =~ m#^text/html#) {
 	local $/ = undef;
-	my $f = IO::File->new($file, "r") or return undef;
+	my $f = IO::File->new($subreq->filename, "r") or return $file;
 	my $html = <$f>;
 	$html =~ m#<title>([^>]+)</title>#i;
+	return $file unless $1;
 	if ($encoder) {
 	    my $enc = $encoder->new;
 	    return $enc->encode($1);
@@ -107,10 +112,12 @@ sub find_title {
 	    return $1;
 	}
     }
-    return undef;
+    return $file;
 }
 
-
+##----------------------------------------------------------------
+## Directives
+##----------------------------------------------------------------
 sub RSSEnableRegexp($$$){
     my($cfg, $params, $arg) = @_;
     $cfg->{RSSEnableRegexp} = eval "qr/$arg/";
@@ -133,9 +140,8 @@ sub RSSCopyRight {
 }
 
 sub RSSHTMLRegexp($$$){
-    my($cfg, $params, $arg) = @_;
-    $cfg->{RSSHTMLRegexp} = eval "qr/$arg/";
-    die $@ if $@;
+     my($cfg, $params, $arg) = @_;
+     warn "RSSHTMLRegexp is obsolete." if $arg;
 }
 
 sub RSSScanHTMLTitle($$$){
@@ -155,11 +161,11 @@ sub RSSEncoding($$$){
 
 sub RSSEncodeHandler {
     my($cfg, $params, $arg) = @_;
-    $arg =~ m/([a-zA-Z0-9:]+)/;
+    $arg =~ m/([a-zA-Z0-9:]+)/; # untaint
     my $class = $1;
     eval "require $class";
     if ($@ && $@ !~ m/^Can't locate/) {
-	return $@;
+	die $@;
     }
     $cfg->{RSSEncodeHandler} = $arg;
 }
@@ -171,7 +177,7 @@ sub DIR_CREATE {
     $self->{RSSChannelDescription} ||= undef;
     $self->{RSSCopyRight} ||= undef;
     $self->{RSSEnableRegexp} ||= '.*';
-    $self->{RSSHTMLRegexp} ||= '\.html?$';
+    $self->{RSSHTMLRegexp} ||= undef;
     $self->{RSSLanguage} ||= 'en-us';
     $self->{RSSEncoding} ||= 'UTF-8';
     $self->{RSSScanHTMLTitle} ||= 0;
@@ -245,15 +251,15 @@ set RSS encoding. default UTF-8
 
 scan HTML files and set HTML <title> as RSS <title> or not. default Off
 
-=item RSSHTMLRegexp <regexp>
-
-A regular exporession of HTML files. default \.html?$
-
 =item RSSEncodeHandler <EncodeHandlerClass>
 
-work with RSSFindTitle and encode HTML title string.
+works with RSSScanHTMLTitle and encode HTML title string.
 
 eg. L<Apache::RSS::Encoding::JcodeUTF8>
+
+=item RSSHTMLRegexp <regexp>
+
+this directive is obsolete. ignored with warn.
 
 =back
 
